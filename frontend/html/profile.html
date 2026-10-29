@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoomMatch - ข้อมูลบัญชีผู้ใช้</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=5">
+    <style>
+        body { font-family: 'Prompt', sans-serif; }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-800 min-h-screen flex flex-col relative" data-requires-auth="true">
+
+    <!-- Header / Navigation Bar -->
+    <header class="bg-white border-b border-slate-100 sticky top-0 z-40 py-3 px-8 shadow-sm">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            
+            <!-- โลโก้ RoomMatch -->
+            <a href="index.html" class="flex items-center gap-3 no-underline hover:opacity-90 transition">
+                <div class="w-10 h-10 bg-[#3b82f6] rounded-2xl flex items-center justify-center text-white shadow-sm">
+                    <i class="fa-solid fa-house text-lg"></i>
+                </div>
+                <span class="font-bold text-xl text-[#1e293b] tracking-tight">RoomMatch</span>
+            </a>
+
+            <!-- เมนูหลัก -->
+            <nav class="hidden md:flex items-center bg-[#f4f5f7] p-1.5 rounded-full border border-slate-200/40">
+                <a href="index.html" class="px-5 py-2 text-slate-600 font-medium text-sm rounded-full hover:text-slate-900 transition-colors">หน้าแรก</a>
+                <a href="upload.html" class="px-5 py-2 text-slate-600 font-medium text-sm rounded-full hover:text-slate-900 transition-colors">ออกแบบห้อง</a>
+                <a href="result.html" class="px-5 py-2 text-slate-600 font-medium text-sm rounded-full hover:text-slate-900 transition-colors">ร้านค้า</a>
+                
+                <!-- เมนูสำหรับ Seller และ Admin (ซ่อนเริ่มต้นด้วย !important) -->
+                <a href="orders.html" id="nav-orders" style="display: none !important;" class="px-5 py-2 text-slate-600 font-medium text-sm rounded-full hover:text-slate-900 transition-colors">จัดการคลังสินค้า</a>
+                <a href="dashboard.html" id="nav-dashboard" style="display: none !important;" class="px-5 py-2 text-slate-600 font-medium text-sm rounded-full hover:text-slate-900 transition-colors">จัดการระบบ</a>
+            </nav>
+
+            <!-- ข้อมูลผู้ใช้ด้านขวา -->
+            <div class="flex items-center gap-3">
+                <div id="user-profile" class="hidden items-center gap-3 cursor-pointer hover:opacity-80 transition" title="ไปที่ข้อมูลผู้ใช้">
+                    <span id="nav-username" class="font-medium text-slate-700 text-sm hidden sm:block">กำลังโหลด...</span>
+                    <img id="nav-avatar" src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="User Avatar" class="w-9 h-9 rounded-full border border-slate-200 object-cover shadow-sm">
+                </div>
+
+                <a id="login-btn" href="index.html?action=login" class="hidden px-5 py-2.5 bg-slate-800 text-white text-sm rounded-full font-medium shadow-sm hover:bg-slate-700 transition no-underline">
+                    เข้าสู่ระบบ
+                </a>
+
+                <button type="button" id="logout-btn" class="hidden w-9 h-9 rounded-full bg-[#fef2f2] text-[#ef4444] hover:bg-red-100 flex items-center justify-center transition border-none cursor-pointer" title="ออกจากระบบ">
+                    <i class="fa-solid fa-right-from-bracket text-xs"></i>
+                </button>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- แจ้งเตือน Notification -->
+    <div id="alert-container" class="fixed top-20 right-6 z-50 flex flex-col gap-2"></div>
+
+    <!-- ส่วนเนื้อหาหลัก: ข้อมูลบัญชีผู้ใช้ -->
+    <main class="flex-grow max-w-4xl w-full mx-auto px-6 py-12">
+        
+        <!-- หัวข้อหน้า -->
+        <div class="flex items-center gap-3 mb-6">
+            <div class="bg-blue-500 text-white rounded-full w-9 h-9 flex items-center justify-center text-sm shadow-sm">
+                <i class="fa-solid fa-user"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-800">ข้อมูลบัญชีของคุณ</h1>
+        </div>
+
+        <!-- การ์ดแสดงข้อมูลบัญชี -->
+        <div class="bg-white border border-slate-100 rounded-2xl shadow-sm p-6 md:p-8 flex flex-col md:flex-row gap-8 items-center md:items-start">
+            
+            <!-- รูปโปรไฟล์ -->
+            <div class="flex-shrink-0 relative">
+                <img id="profile-avatar" src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="Profile Avatar" class="w-32 h-32 md:w-36 md:h-36 rounded-full border-[5px] border-blue-50 shadow-sm object-cover">
+            </div>
+
+            <!-- รายละเอียดข้อมูล -->
+            <div class="flex-grow w-full space-y-4">
+                
+                <!-- แถวบน: ID ผู้ใช้ และ ชื่อผู้ใช้ -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    <!-- กล่อง ID ผู้ใช้ -->
+                    <div class="bg-slate-50/80 p-4 rounded-xl border border-slate-100">
+                        <p class="text-xs font-bold text-slate-400 mb-1">ID ผู้ใช้</p>
+                        <p id="profile-id" class="text-lg font-bold text-slate-800">กำลังโหลด...</p>
+                    </div>
+
+                    <!-- กล่อง Username -->
+                    <div class="bg-slate-50/80 p-4 rounded-xl border border-slate-100">
+                        <p class="text-xs font-bold text-slate-400 mb-1">ชื่อผู้ใช้ (USERNAME)</p>
+                        <p id="profile-username" class="text-lg font-bold text-slate-800">กำลังโหลด...</p>
+                    </div>
+                    
+                </div>
+
+                <!-- แถวล่าง: Email -->
+                <div class="bg-slate-50/80 p-4 rounded-xl border border-slate-100">
+                    <p class="text-xs font-bold text-slate-400 mb-1">อีเมล (EMAIL)</p>
+                    <p id="profile-email" class="text-lg font-bold text-slate-800">กำลังโหลด...</p>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 hidden [&.active]:flex flex-col items-center justify-center">
+        <div class="relative w-20 h-20 mb-4">
+            <div class="absolute inset-0 rounded-full border-4 border-slate-100"></div>
+            <div class="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+        </div>
+        <h3 class="text-lg font-bold text-slate-800">กำลังโหลดข้อมูล...</h3>
+    </div>
+
+    <script src="app.js?v=19"></script>
+</body>
+</html>

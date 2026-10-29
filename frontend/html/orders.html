@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoomMatch - จัดการคลังเฟอร์นิเจอร์ (Seller)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=5">
+    <style>
+        body { font-family: 'Prompt', sans-serif; }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-800 min-h-screen flex flex-col relative" data-requires-auth="true">
+
+    <!-- Header / Navbar -->
+    <header class="bg-white/85 backdrop-blur-md border-b border-slate-200/60 sticky top-0 z-40 py-3.5 px-6 sm:px-8 shadow-xs">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            
+            <a href="index.html" class="flex items-center gap-3 no-underline hover:opacity-90 transition group">
+                <div class="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-md shadow-blue-500/25 group-hover:scale-105 transition-transform">
+                    <i class="fa-solid fa-house text-lg"></i>
+                </div>
+                <div class="flex flex-col">
+                    <span class="font-bold text-xl text-slate-900 tracking-tight leading-none">RoomMatch</span>
+                    <span class="text-[10px] font-semibold text-blue-600 tracking-wider uppercase mt-0.5">AI Spatial Studio</span>
+                </div>
+            </a>
+
+            <nav class="hidden md:flex items-center bg-slate-100/80 p-1.5 rounded-full border border-slate-200/50 shadow-inner">
+                <a href="index.html" class="px-5 py-2 text-slate-600 hover:text-slate-900 font-medium text-sm rounded-full transition-all">หน้าแรก</a>
+                <a href="upload.html" class="px-5 py-2 text-slate-600 hover:text-slate-900 font-medium text-sm rounded-full transition-all">ออกแบบห้อง</a>
+                <a href="result.html" class="px-5 py-2 text-slate-600 hover:text-slate-900 font-medium text-sm rounded-full transition-all">ร้านค้า</a>
+                <a href="orders.html" id="nav-orders" class="px-5 py-2 bg-white text-blue-600 font-semibold text-sm rounded-full shadow-sm">จัดการคลังสินค้า</a>
+                <a href="dashboard.html" id="nav-dashboard" style="display: none !important;" class="px-5 py-2 text-slate-600 font-medium text-sm rounded-full hover:text-slate-900 transition-colors">จัดการระบบ</a>
+            </nav>
+
+            <div class="flex items-center gap-3">
+                <div id="user-profile" onclick="window.location.href='dashboard.html'" class="hidden items-center gap-2.5 cursor-pointer bg-slate-50 hover:bg-slate-100 py-1.5 px-3 rounded-full border border-slate-200/60 transition" title="ข้อมูลผู้ใช้">
+                    <span id="nav-username" class="font-semibold text-slate-700 text-sm hidden sm:block">กำลังโหลด...</span>
+                    <img id="nav-avatar" src="https://ui-avatars.com/api/?name=User&background=2563eb&color=fff" class="w-8 h-8 rounded-full border border-slate-200 object-cover shadow-xs">
+                </div>
+                <button id="logout-btn" class="hidden w-9 h-9 rounded-full bg-rose-50 text-rose-500 hover:bg-rose-100 flex items-center justify-center transition border-none cursor-pointer" title="ออกจากระบบ">
+                    <i class="fa-solid fa-right-from-bracket text-xs"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div id="alert-container" class="fixed top-20 right-6 z-50 flex flex-col gap-2"></div>
+
+    <main class="flex-grow max-w-7xl mx-auto w-full px-6 py-12">
+        
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800 mb-2">จัดการคลังเฟอร์นิเจอร์</h1>
+                <p class="text-slate-500">เพิ่มและจัดการเฟอร์นิเจอร์เพื่อให้ AI นำไปจัดวางในห้องของลูกค้า</p>
+            </div>
+            <!-- บังคับเปิด Modal ด้วย onclick -->
+            <button id="open-add-modal-btn" onclick="document.getElementById('add-product-modal').classList.remove('hidden')" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition shadow-sm font-medium flex items-center gap-2 border-none cursor-pointer">
+                <i class="fa-solid fa-plus"></i> เพิ่มเฟอร์นิเจอร์ใหม่
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-couch"></i>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500 font-medium">สินค้าทั้งหมด</p>
+                    <p class="text-2xl font-bold text-slate-800"><span id="stat-total-products">0</span> <span class="text-sm font-normal text-slate-500">รายการ</span></p>
+                </div>
+            </div>
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500 font-medium">AI เลือกใช้งาน</p>
+                    <p class="text-2xl font-bold text-slate-800"><span id="stat-ai-usage">0</span> <span class="text-sm font-normal text-slate-500">ครั้ง</span></p>
+                </div>
+            </div>
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-arrow-pointer"></i>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500 font-medium">คลิกไปหน้าร้านค้า</p>
+                    <p class="text-2xl font-bold text-slate-800"><span id="stat-store-clicks">0</span> <span class="text-sm font-normal text-slate-500">ครั้ง</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ปุ่มตัวกรองสถานะสินค้า (อัปเดต data-status-filter) -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-4 mb-4 text-sm">
+            <button type="button" data-status-filter="all" class="status-filter-btn px-5 py-2 bg-blue-600 text-white rounded-full font-medium whitespace-nowrap shadow-sm border-none cursor-pointer">ทั้งหมด</button>
+            <button type="button" data-status-filter="active" class="status-filter-btn px-5 py-2 bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-full font-medium whitespace-nowrap transition cursor-pointer">ใช้งานอยู่</button>
+            <button type="button" data-status-filter="hidden" class="status-filter-btn px-5 py-2 bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-full font-medium whitespace-nowrap transition cursor-pointer">ซ่อน</button>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse min-w-[800px]">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 text-sm">
+                            <th class="p-4 font-semibold w-16">รูปภาพ</th>
+                            <th class="p-4 font-semibold">ชื่อสินค้า</th>
+                            <th class="p-4 font-semibold">หมวดหมู่ / สไตล์</th>
+                            <th class="p-4 font-semibold">ราคา</th>
+                            <th class="p-4 font-semibold text-center">สถานะ</th>
+                            <th class="p-4 font-semibold text-center w-28">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="product-table-body">
+                        <tr><td colspan="6" class="p-4 text-center text-slate-500">กำลังโหลดข้อมูลสินค้า...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal เพิ่มสินค้า -->
+    <div id="add-product-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative max-h-[90vh] overflow-y-auto">
+            <!-- บังคับปิด Modal ด้วย onclick -->
+            <button id="close-modal-btn" onclick="document.getElementById('add-product-modal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            <h2 class="text-xl font-bold text-slate-800 mb-4">เพิ่มเฟอร์นิเจอร์ใหม่</h2>
+            
+            <form id="add-product-form" class="flex flex-col gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">ชื่อสินค้า</label>
+                    <input type="text" id="product-name" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">หมวดหมู่</label>
+                        <select id="product-category" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                            <option value="" disabled selected>เลือกหมวดหมู่...</option>
+                            <option value="โซฟา">โซฟา</option>
+                            <option value="โต๊ะ">โต๊ะ</option>
+                            <option value="เก้าอี้">เก้าอี้</option>
+                            <option value="เตียง">เตียง</option>
+                            <option value="ตู้">ตู้</option>
+                            <option value="ของตกแต่ง">ของตกแต่ง</option>
+                            <option value="อื่นๆ">อื่นๆ</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">ราคา (บาท)</label>
+                        <input type="number" id="product-price" required min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">ลิงก์สั่งซื้อสินค้า (URL)</label>
+                        <input type="text" id="product-url" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://... (ไม่บังคับ)">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">สไตล์ / แท็ก</label>
+                        <select id="product-style" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                            <option value="" disabled selected>เลือกสไตล์...</option>
+                            <option value="มินิมอล (Minimalist)">มินิมอล (Minimalist)</option>
+                            <option value="นอร์ดิก / สแกนดิเนเวียน (Nordic)">นอร์ดิก / สแกนดิเนเวียน (Nordic)</option>
+                            <option value="โมเดิร์น (Modern)">โมเดิร์น (Modern)</option>
+                            <option value="ลอฟท์ (Loft / Industrial)">ลอฟท์ (Loft / Industrial)</option>
+                            <option value="จาแปนดิ (Japandi)">จาแปนดิ (Japandi)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">รายละเอียด (ใส่หรือไม่ก็ได้)</label>
+                    <textarea id="product-description" rows="2" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">รูปภาพสินค้า</label>
+                    <input type="file" id="product-image" accept="image/*" required class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                    
+                    <!-- เพิ่มคอนเทนเนอร์สำหรับแสดงตัวอย่างรูปภาพ -->
+                    <div id="image-preview-container" class="mt-3 hidden">
+                        <img id="image-preview-element" src="#" alt="Preview" class="w-full max-h-40 object-contain bg-slate-100 rounded-lg border border-slate-200">
+                    </div>
+                </div>
+
+                <button type="submit" class="mt-2 w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition cursor-pointer">
+                    บันทึกสินค้า
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 hidden [&.active]:flex flex-col items-center justify-center">
+        <div class="relative w-20 h-20 mb-4">
+            <div class="absolute inset-0 rounded-full border-4 border-slate-100"></div>
+            <div class="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+        </div>
+        <h3 class="text-lg font-bold text-slate-800">กำลังโหลด...</h3>
+    </div>
+
+    <!-- อย่าลืมใช้ app_4.js ที่เพิ่มโค้ดจัดการ Image Preview ตามคำตอบก่อนหน้านี้ -->
+    <script src="app.js?v=15"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+fastapi==0.104.1
+uvicorn==0.24.0.post1
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+pydantic==2.5.2
+pydantic-settings==2.1.0
+bcrypt==4.0.1
+passlib==1.7.4
+python-multipart==0.0.6
+email-validator
+requests
+
+# เพิ่มสำหรับ AI & Vector Search
+pgvector
+torch
+transformers
+Pillow

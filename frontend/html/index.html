@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoomMatch - แพลตฟอร์มออกแบบภายในด้วย AI อัจฉริยะ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=5">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        body { font-family: 'Prompt', 'Plus Jakarta Sans', sans-serif; }
+        
+        /* สลับการแสดงผลแต่ละ View */
+        .page-view { 
+            display: none; 
+        }
+        .page-view.active { 
+            display: block; 
+        }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-800 min-h-screen flex flex-col relative selection:bg-blue-600 selection:text-white">
+
+    <!-- Header / Navigation Bar (Glassmorphic) -->
+    <header class="bg-white/85 backdrop-blur-md border-b border-slate-200/60 sticky top-0 z-40 py-3.5 px-6 sm:px-8 shadow-xs">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            
+            <!-- โลโก้ RoomMatch -->
+            <a href="index.html" class="flex items-center gap-3 no-underline group">
+                <div class="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white shadow-sm shadow-blue-500/25 group-hover:scale-105 transition-transform duration-300">
+                    <i class="fa-solid fa-wand-magic-sparkles text-base"></i>
+                </div>
+                <div>
+                    <span class="font-extrabold text-xl text-slate-900 tracking-tight leading-none block">RoomMatch</span>
+                    <span class="text-[10px] font-semibold text-blue-600 tracking-wider uppercase mt-1 block">AI Spatial Studio</span>
+                </div>
+            </a>
+
+            <!-- เมนูหลักแบบแคปซูล -->
+            <nav class="hidden md:flex items-center bg-slate-100/80 p-1.5 rounded-full border border-slate-200/50 shadow-inner">
+                <a href="index.html" class="px-5 py-2 bg-white text-blue-600 font-semibold text-sm rounded-full shadow-sm no-underline">หน้าแรก</a>
+                <a href="upload.html" class="px-5 py-2 text-slate-600 hover:text-slate-900 font-medium text-sm rounded-full transition-all no-underline">ออกแบบห้อง</a>
+                <a href="result.html" class="px-5 py-2 text-slate-600 hover:text-slate-900 font-medium text-sm rounded-full transition-all no-underline">ร้านค้า</a>
+                
+                <!-- เมนูสำหรับ Seller และ Admin (ซ่อนเป็นค่าเริ่มต้น) -->
+                <a href="orders.html" id="nav-orders" style="display: none !important;" class="px-5 py-2 text-slate-600 font-medium text-sm rounded-full hover:text-slate-900 transition-colors">จัดการคลังสินค้า</a>
+                <a href="dashboard.html" id="nav-dashboard" style="display: none !important;" class="px-5 py-2 text-slate-600 font-medium text-sm rounded-full hover:text-slate-900 transition-colors">จัดการระบบ</a>
+            </nav>
+
+            <!-- ข้อมูลผู้ใช้ / ปุ่มเข้าสู่ระบบ -->
+            <div class="flex items-center gap-3">
+                <div id="user-profile" class="hidden items-center gap-2.5 cursor-pointer bg-slate-50 hover:bg-slate-100 py-1.5 px-3 rounded-full border border-slate-200/60 transition" title="โปรไฟล์ผู้ใช้">
+                    <span id="nav-username" class="font-semibold text-slate-700 text-sm hidden sm:block">กำลังโหลด...</span>
+                    <img id="nav-avatar" src="https://ui-avatars.com/api/?name=User&background=2563eb&color=fff" alt="User Avatar" class="w-8 h-8 rounded-full border border-slate-200 object-cover shadow-xs">
+                </div>
+
+                <button type="button" id="login-btn" onclick="openLoginModal()" class="px-5 py-2.5 bg-slate-900 text-white text-sm rounded-full font-semibold shadow-sm hover:bg-slate-800 transition border-none cursor-pointer">
+                    เข้าสู่ระบบ
+                </button>
+
+                <button type="button" id="logout-btn" class="hidden w-9 h-9 rounded-full bg-rose-50 text-rose-500 hover:bg-rose-100 flex items-center justify-center transition border-none cursor-pointer" title="ออกจากระบบ">
+                    <i class="fa-solid fa-right-from-bracket text-xs"></i>
+                </button>
+            </div>
+
+        </div>
+    </header>
+
+    <div id="alert-container" class="fixed top-20 right-6 z-50 flex flex-col gap-2"></div>
+
+    <main class="flex-grow">
+        <!-- HOME SECTION -->
+        <section id="page-home" class="page-view active max-w-7xl mx-auto px-6 py-12 lg:py-16 flex flex-col gap-16 lg:gap-20">
+            
+            <!-- Hero Top Row (Balanced 50/50 Layout) -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+                
+                <!-- Left Column: Content -->
+                <div class="flex flex-col gap-6">
+                    <div class="inline-flex items-center gap-2 px-3.5 py-1.5 bg-blue-50 border border-blue-200/60 text-blue-700 rounded-full text-xs font-semibold w-max shadow-2xs">
+                        <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+                        <span>AI Spatial Interior Design Studio</span>
+                    </div>
+
+                    <h1 class="text-4xl sm:text-5xl lg:text-[52px] font-extrabold leading-[1.18] text-slate-900 tracking-tight">
+                        เปลี่ยนห้องเดิมๆ<br>
+                        ให้กลายเป็น <span class="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">ห้องในฝันที่คุณรัก</span>
+                    </h1>
+
+                    <p class="text-base sm:text-lg text-slate-600 leading-relaxed max-w-xl">
+                        เพียงอัปโหลดภาพถ่ายห้องของคุณ AI จะช่วยวิเคราะห์สัดส่วนพื้นที่ ทิศทางแสงธรรมชาติ และปักหมุดจัดวางเฟอร์นิเจอร์ที่ลงตัว ในงบประมาณที่คุณกำหนดได้เอง
+                    </p>
+
+                    <div class="flex flex-wrap items-center gap-3.5 pt-2">
+                        <a href="upload.html" id="hero-cta-btn" class="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-bold text-sm sm:text-base shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all text-center flex items-center justify-center gap-2.5 no-underline">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            <span>เริ่มออกแบบห้องฟรี</span>
+                            <i class="fa-solid fa-arrow-right text-xs ml-1"></i>
+                        </a>
+
+                        <a href="result.html" class="px-7 py-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 rounded-full font-semibold text-sm sm:text-base transition-all text-center flex items-center justify-center gap-2 no-underline shadow-2xs">
+                            <i class="fa-solid fa-store text-blue-600"></i>
+                            <span>เลือกชมสินค้าในร้าน</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Right Column: Warm Minimalist Interior Studio Mockup -->
+                <div class="relative">
+                    <div class="relative rounded-3xl overflow-hidden shadow-xl border-4 border-white ring-1 ring-slate-200/80 group">
+                        <img src="https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1000&q=80" alt="Minimalist Japandi Living Room" class="w-full aspect-[4/3] object-cover group-hover:scale-105 transition-transform duration-700">
+                        
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-black/10"></div>
+
+                        <!-- Floating Live Hotspot Pins (Natural, Aesthetic Placement) -->
+                        <div class="absolute top-[52%] left-[32%] flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-full bg-blue-600 text-white font-bold text-xs shadow-lg backdrop-blur-md border border-white/30 transition-all hover:scale-105">
+                            <span class="w-4 h-4 rounded-full bg-white text-blue-600 text-[10px] flex items-center justify-center font-extrabold shadow-inner">1</span>
+                            <span>โซฟาพักผ่อน</span>
+                        </div>
+                        <div class="absolute top-[72%] left-[55%] flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-full bg-amber-500 text-white font-bold text-xs shadow-lg backdrop-blur-md border border-white/30 transition-all hover:scale-105">
+                            <span class="w-4 h-4 rounded-full bg-white text-amber-600 text-[10px] flex items-center justify-center font-extrabold shadow-inner">2</span>
+                            <span>โต๊ะกลางไม้โอ๊ค</span>
+                        </div>
+
+                        <!-- Subtle Bottom Glassmorphic Caption -->
+                        <div class="absolute bottom-3 left-3 right-3 bg-slate-950/80 backdrop-blur-md border border-white/10 px-4 py-2.5 rounded-2xl text-white flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span class="font-semibold text-xs text-white">AI Spatial Vision Active</span>
+                            </div>
+                            <span class="text-[11px] text-slate-300 font-medium">ตรวจจับแสงและพื้นที่ว่าง</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Symmetrical Metrics Strip (Centered & Balanced Across Page) -->
+            <div class="w-full bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 text-center">
+                <div class="flex flex-col items-center">
+                    <span class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">100%</span>
+                    <span class="text-xs sm:text-sm text-slate-500 font-medium mt-1.5">ควบคุมงบประมาณได้เป๊ะ</span>
+                </div>
+                <div class="flex flex-col items-center border-l sm:border-l-0 md:border-l border-slate-100">
+                    <span class="text-3xl sm:text-4xl font-extrabold text-blue-600 tracking-tight">&lt; 3 วินาที</span>
+                    <span class="text-xs sm:text-sm text-slate-500 font-medium mt-1.5">วิเคราะห์พื้นที่ห้องรวดเร็ว</span>
+                </div>
+                <div class="flex flex-col items-center border-t sm:border-t-0 md:border-l border-slate-100 pt-4 sm:pt-0">
+                    <span class="text-3xl sm:text-4xl font-extrabold text-indigo-600 tracking-tight">0%</span>
+                    <span class="text-xs sm:text-sm text-slate-500 font-medium mt-1.5">ไม่แนะนำเฟอร์นิเจอร์ซ้ำ</span>
+                </div>
+                <div class="flex flex-col items-center border-t sm:border-t-0 md:border-l border-slate-100 pt-4 sm:pt-0">
+                    <span class="text-3xl sm:text-4xl font-extrabold text-emerald-600 tracking-tight">Spatial</span>
+                    <span class="text-xs sm:text-sm text-slate-500 font-medium mt-1.5">ปักหมุดจุดจัดวางจริง</span>
+                </div>
+            </div>
+
+            <!-- Features Grid Section -->
+            <div class="flex flex-col gap-10 mt-8 sm:mt-14">
+                <div class="text-center max-w-2xl mx-auto">
+                    <span class="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                        Smart Capabilities
+                    </span>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-3 mb-2 tracking-tight">
+                        เทคโนโลยี AI ที่คิดค้นเพื่อการจัดบ้านจริง
+                    </h2>
+                    <p class="text-slate-500 text-sm sm:text-base leading-relaxed">
+                        แก้ปัญหาการจัดห้องทั่วไปด้วยความฉลาดระดับสถาปนิกภายใน
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Feature 1 -->
+                    <div class="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs hover:shadow-xl hover:border-blue-200 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
+                        <div>
+                            <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl mb-5 shadow-xs">
+                                <i class="fa-solid fa-compass-drafting"></i>
+                            </div>
+                            <h3 class="font-bold text-slate-900 text-base mb-2">AI Spatial Layout</h3>
+                            <p class="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                                วิเคราะห์แนวดิ่งระนาบพื้นห้องจริง (Floor Baseline) และทิศทางช่องแสงธรรมชาติ เพื่อวางของติดพื้นอย่างสมดุล
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Feature 2 -->
+                    <div class="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs hover:shadow-xl hover:border-emerald-200 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
+                        <div>
+                            <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl mb-5 shadow-xs">
+                                <i class="fa-solid fa-shield-halved"></i>
+                            </div>
+                            <h3 class="font-bold text-slate-900 text-base mb-2">Anti-Duplicate System</h3>
+                            <p class="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                                โมเดล Vision สแกนเฟอร์นิเจอร์เดิมในห้อง หากมีเตียงหรือโซฟาแล้ว จะไม่แนะนำซ้ำซ้อนให้เปลืองงบ
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Feature 3 -->
+                    <div class="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs hover:shadow-xl hover:border-amber-200 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
+                        <div>
+                            <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl mb-5 shadow-xs">
+                                <i class="fa-solid fa-wallet"></i>
+                            </div>
+                            <h3 class="font-bold text-slate-900 text-base mb-2">Strict Budget Guard</h3>
+                            <p class="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                                คำนวณราคารวมสินค้าจริงที่แนะนำ บวกกันแล้วห้ามเกินงบประมาณที่กำหนด 100% ไม่มีงบบานปลาย
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Feature 4 -->
+                    <div class="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs hover:shadow-xl hover:border-purple-200 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
+                        <div>
+                            <div class="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl mb-5 shadow-xs">
+                                <i class="fa-solid fa-location-dot"></i>
+                            </div>
+                            <h3 class="font-bold text-slate-900 text-base mb-2">Interactive 3D Pins</h3>
+                            <p class="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                                ปักหมุดตำแหน่งจัดวางบนภาพถ่าย พร้อมคำแนะนำสรีรศาสตร์ ทางสัญจร และสั่งซื้อสินค้าได้ทันที
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- LOGIN MODAL (เด้งขึ้นมาตรงกลางหน้าจอทันทีเมื่อกดเข้าสู่ระบบ) -->
+    <div id="login-modal" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-md hidden items-center justify-center p-4 transition-all duration-300">
+        <div class="bg-white max-w-[440px] w-full p-8 sm:p-10 rounded-3xl shadow-2xl border border-slate-200/80 relative overflow-hidden transform transition-all duration-300 scale-95 opacity-0 modal-card">
+            <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600"></div>
+
+            <!-- ปุ่มปิด Modal (X) -->
+            <button type="button" onclick="closeLoginModal()" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition border-none cursor-pointer text-sm" title="ปิดหน้าต่าง">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="text-center mb-6">
+                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-3 text-xl shadow-xs">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-1">ยินดีต้อนรับกลับมา</h2>
+                <p class="text-xs sm:text-sm text-slate-500">กรุณาเข้าสู่ระบบเพื่อเริ่มออกแบบหรือจัดการร้านค้า</p>
+            </div>
+
+            <!-- ปุ่มเข้าสู่ระบบผ่าน Google -->
+            <button type="button" onclick="startGoogleAuth('login')" class="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-700 font-semibold py-3.5 px-4 rounded-xl border border-slate-300 shadow-xs hover:shadow-md transition-all cursor-pointer mb-5 group">
+                <svg class="w-5 h-5 flex-shrink-0 transition-transform group-hover:scale-110" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                <span>เข้าสู่ระบบด้วย Google</span>
+            </button>
+
+            <!-- ตัวคั่น Or -->
+            <div class="relative flex items-center justify-center my-4">
+                <div class="border-t border-slate-200 w-full"></div>
+                <span class="bg-white px-3 text-xs uppercase tracking-wider text-slate-400 font-semibold absolute">หรือใช้ชื่อผู้ใช้</span>
+            </div>
+
+            <form id="login-form" class="flex flex-col gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">ชื่อผู้ใช้ (Username)</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><i class="fa-solid fa-user"></i></span>
+                        <input type="text" id="login-username" required placeholder="กรอกชื่อผู้ใช้..." class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-3.5 pl-11 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100 transition shadow-inner text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">รหัสผ่าน (Password)</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><i class="fa-solid fa-lock"></i></span>
+                        <input type="password" id="login-password" required placeholder="กรอกรหัสผ่าน..." class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-3.5 pl-11 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100 transition shadow-inner text-sm">
+                    </div>
+                </div>
+                <button type="submit" id="btn-submit-login" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl py-3.5 font-bold hover:shadow-lg hover:shadow-blue-500/25 transition-all flex justify-center items-center gap-2 border-none cursor-pointer mt-1">
+                    <span>เข้าสู่ระบบ</span>
+                    <i class="fa-solid fa-spinner fa-spin hidden" id="login-spinner"></i>
+                </button>
+            </form>
+
+            <div class="mt-6 text-center text-xs text-slate-500 pt-5 border-t border-slate-100">
+                ยังไม่มีบัญชีใช่ไหม? <a href="register.html" class="text-blue-600 font-bold hover:underline">สมัครสมาชิกที่นี่</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200/60 py-8 px-6 text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-2">
+                <span class="font-bold text-slate-800">RoomMatch</span>
+                <span class="text-slate-400">— AI Spatial Interior Studio</span>
+            </div>
+            <div class="flex items-center gap-6 text-slate-600">
+                <a href="index.html" class="hover:text-blue-600 transition no-underline text-slate-600">หน้าแรก</a>
+                <a href="upload.html" class="hover:text-blue-600 transition no-underline text-slate-600">ออกแบบห้อง</a>
+                <a href="result.html" class="hover:text-blue-600 transition no-underline text-slate-600">ร้านค้า</a>
+            </div>
+            <span class="text-slate-400">© 2026 RoomMatch. All rights reserved.</span>
+        </div>
+    </footer>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 hidden [&.active]:flex flex-col items-center justify-center">
+        <div class="relative w-16 h-16 mb-4">
+            <div class="absolute inset-0 rounded-full border-4 border-slate-100"></div>
+            <div class="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+        </div>
+        <h3 class="text-base font-bold text-slate-800">กำลังโหลด...</h3>
+    </div>
+
+    <script src="app.js?v=21"></script>
+    <script>
+        function openLoginModal() {
+            const modal = document.getElementById('login-modal');
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            requestAnimationFrame(() => {
+                const card = modal.querySelector('.modal-card');
+                if (card) {
+                    card.classList.remove('scale-95', 'opacity-0');
+                    card.classList.add('scale-100', 'opacity-100');
+                }
+                const usernameInput = document.getElementById('login-username');
+                if (usernameInput) usernameInput.focus();
+            });
+        }
+
+        function closeLoginModal() {
+            const modal = document.getElementById('login-modal');
+            if (!modal) return;
+            const card = modal.querySelector('.modal-card');
+            if (card) {
+                card.classList.remove('scale-100', 'opacity-100');
+                card.classList.add('scale-95', 'opacity-0');
+            }
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 200);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('login-modal');
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) closeLoginModal();
+                });
+            }
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeLoginModal();
+            });
+
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('action') === 'login' && typeof Session !== 'undefined' && !Session.isLoggedIn()) {
+                setTimeout(openLoginModal, 150);
+            }
+        });
+
+        window.openLoginModal = openLoginModal;
+        window.closeLoginModal = closeLoginModal;
+    </script>
+</body>
+</html>

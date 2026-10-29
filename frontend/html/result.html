@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoomMatch - ร้านค้าเฟอร์นิเจอร์และผลลัพธ์จาก AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=5">
+    <style>
+        body { font-family: 'Prompt', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Animation และ Effect สำหรับหมุดบอกตำแหน่ง AI */
+        .pin-pulse {
+            animation: pinPulse 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+        @keyframes pinPulse {
+            0% { transform: scale(0.95); opacity: 0.9; }
+            50% { transform: scale(1.35); opacity: 0.25; }
+            100% { transform: scale(0.95); opacity: 0.9; }
+        }
+        .card-highlight {
+            outline: 3px solid #2563eb !important;
+            box-shadow: 0 12px 28px -5px rgba(37, 99, 235, 0.3) !important;
+            transform: translateY(-4px) !important;
+            transition: all 0.3s ease !important;
+        }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-800 min-h-screen flex flex-col relative" id="result-page">
+
+    <!-- Header / Navbar -->
+    <header class="bg-white/85 backdrop-blur-md border-b border-slate-200/60 sticky top-0 z-40 py-3.5 px-6 sm:px-8 shadow-xs">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            
+            <a href="index.html" class="flex items-center gap-3 no-underline hover:opacity-90 transition group">
+                <div class="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-md shadow-blue-500/25 group-hover:scale-105 transition-transform">
+                    <i class="fa-solid fa-house text-lg"></i>
+                </div>
+                <div class="flex flex-col">
+                    <span class="font-bold text-xl text-slate-900 tracking-tight leading-none">RoomMatch</span>
+                    <span class="text-[10px] font-semibold text-blue-600 tracking-wider uppercase mt-0.5">AI Spatial Studio</span>
+                </div>
+            </a>
+
+            <nav class="hidden md:flex items-center bg-slate-100/80 p-1.5 rounded-full border border-slate-200/50 shadow-inner">
+                <a href="index.html" class="px-5 py-2 text-slate-600 hover:text-slate-900 font-medium text-sm rounded-full transition-all">หน้าแรก</a>
+                <a href="upload.html" class="px-5 py-2 text-slate-600 hover:text-slate-900 font-medium text-sm rounded-full transition-all">ออกแบบห้อง</a>
+                <span class="px-5 py-2 bg-white text-blue-600 font-semibold text-sm rounded-full shadow-sm">ร้านค้า</span>
+                
+                <a href="orders.html" id="nav-orders" class="px-5 py-2 text-slate-600 font-medium text-sm rounded-full hover:text-slate-900 transition-colors" style="display: none !important;">จัดการคลังสินค้า</a>
+                <a href="dashboard.html" id="nav-dashboard" class="px-5 py-2 text-slate-600 font-medium text-sm rounded-full hover:text-slate-900 transition-colors" style="display: none !important;">จัดการระบบ</a>
+            </nav>
+
+            <div class="flex items-center gap-3">
+                <div id="user-profile" onclick="window.location.href='dashboard.html'" class="hidden items-center gap-2.5 cursor-pointer bg-slate-50 hover:bg-slate-100 py-1.5 px-3 rounded-full border border-slate-200/60 transition" title="ไปที่ข้อมูลผู้ใช้">
+                    <span id="nav-username" class="font-semibold text-slate-700 text-sm hidden sm:block">กำลังโหลด...</span>
+                    <img id="nav-avatar" src="https://ui-avatars.com/api/?name=User&background=2563eb&color=fff" alt="User Avatar" class="w-8 h-8 rounded-full border border-slate-200 object-cover shadow-xs">
+                </div>
+
+                <a id="login-btn" href="index.html?action=login" class="px-5 py-2.5 bg-slate-900 text-white text-sm rounded-full font-semibold shadow-sm hover:bg-slate-800 transition no-underline">
+                    เข้าสู่ระบบ
+                </a>
+
+                <button type="button" id="logout-btn" class="hidden w-9 h-9 rounded-full bg-rose-50 text-rose-500 hover:bg-rose-100 flex items-center justify-center transition border-none cursor-pointer" title="ออกจากระบบ">
+                    <i class="fa-solid fa-right-from-bracket text-xs"></i>
+                </button>
+            </div>
+
+        </div>
+    </header>
+
+    <div id="alert-container" class="fixed top-20 right-6 z-50 flex flex-col gap-2"></div>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-6 py-10">
+        
+        <!-- สรุปผลลัพธ์จาก AI (แสดงเฉพาะเมื่อมาจากหน้า upload) -->
+        <div id="ai-summary-card" class="hidden mb-12 bg-white rounded-3xl p-6 md:p-8 border border-slate-200/80 shadow-2xl shadow-slate-200/40 relative overflow-hidden">
+            <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600"></div>
+            <div class="flex flex-col lg:flex-row gap-8 items-start">
+                
+                <!-- ฝั่งซ้าย: รูปห้องพร้อมหมุดบอกตำแหน่ง AI (Interactive Spatial Markers) -->
+                <div class="w-full lg:w-1/2 flex flex-col gap-3">
+                    <div class="relative w-full aspect-video sm:aspect-[4/3] rounded-2xl overflow-hidden bg-slate-950 shadow-xl border border-slate-200/60 select-none">
+                        <img id="result-image" src="" alt="Uploaded Room" class="w-full h-full object-cover">
+                        
+                        <!-- คอนเทนเนอร์สำหรับเรนเดอร์ Footprints โซนพื้นที่จัดวางบนพื้น -->
+                        <div id="room-footprints-container" class="absolute inset-0 z-10 pointer-events-none transition-opacity duration-300">
+                            <!-- Footprint zones จะถูก render ที่นี่ -->
+                        </div>
+
+                        <!-- คอนเทนเนอร์สำหรับเรนเดอร์หมุดบอกตำแหน่ง AI -->
+                        <div id="room-pins-container" class="absolute inset-0 z-20 transition-opacity duration-300">
+                            <!-- หมุดจะถูก render ที่นี่ด้วย JavaScript -->
+                        </div>
+
+                        <!-- แถบควบคุมมุมมองการออกแบบ (Design View Switcher) -->
+                        <div class="absolute top-3 right-3 flex items-center gap-1 z-30 bg-slate-900/85 p-1 rounded-full backdrop-blur-md border border-white/20 shadow-lg">
+                            <button id="view-mode-hotspots" type="button" class="view-mode-btn active px-3 py-1 bg-blue-600 text-white text-[11px] font-semibold rounded-full transition flex items-center gap-1 cursor-pointer border-none shadow-sm">
+                                <i class="fa-solid fa-location-dot"></i>
+                                <span>จุดมาร์ก</span>
+                            </button>
+                            <button id="view-mode-footprints" type="button" class="view-mode-btn px-3 py-1 bg-transparent text-slate-300 hover:text-white text-[11px] font-medium rounded-full transition flex items-center gap-1 cursor-pointer border-none">
+                                <i class="fa-solid fa-draw-polygon"></i>
+                                <span>ผังโซน</span>
+                            </button>
+                            <button id="view-mode-clean" type="button" class="view-mode-btn px-3 py-1 bg-transparent text-slate-300 hover:text-white text-[11px] font-medium rounded-full transition flex items-center gap-1 cursor-pointer border-none">
+                                <i class="fa-solid fa-eye-slash"></i>
+                                <span>ห้องเปล่า</span>
+                            </button>
+                        </div>
+                        
+                        <!-- ป้ายแสดงสถานะด้านล่างซ้าย -->
+                        <div class="absolute bottom-3 left-3 bg-slate-950/85 text-white text-[11px] px-3.5 py-1.5 rounded-full backdrop-blur-md flex items-center gap-2 border border-white/15 z-30">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span class="font-semibold">AI Spatial Vision Active</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between text-xs text-slate-500 px-1">
+                        <span class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-hand-pointer text-blue-500"></i>
+                            คลิกที่ <b>หมุดหมายเลข</b> บนรูปเพื่อดูจุดจัดวางและสินค้าที่ AI แนะนำ
+                        </span>
+                        <span id="pins-count-badge" class="font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">0 ตำแหน่ง</span>
+                    </div>
+                </div>
+
+                <!-- ฝั่งขวา: รายละเอียดการตกแต่งและจุดจัดวาง -->
+                <div class="w-full lg:w-1/2 flex flex-col justify-between h-full">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="px-3 py-1 bg-blue-100 text-blue-700 font-semibold text-xs rounded-full flex items-center gap-1.5">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i> ผลการวิเคราะห์จาก AI
+                                </span>
+                                <span id="result-style" class="px-3 py-1 bg-slate-100 text-slate-700 font-medium text-xs rounded-full">มินิมอล</span>
+                                <span id="result-budget" class="px-3 py-1 bg-emerald-100 text-emerald-700 font-medium text-xs rounded-full">ปานกลาง</span>
+                            </div>
+                            <button id="btn-close-ai-summary" type="button" class="text-slate-400 hover:text-slate-600 hover:bg-slate-100 px-2.5 py-1 rounded-full transition cursor-pointer border border-slate-200/80 flex items-center gap-1.5 text-xs bg-white shadow-xs" title="ปิดการ์ดสรุป AI นี้">
+                                <i class="fa-solid fa-xmark text-sm"></i>
+                                <span class="hidden sm:inline text-[11px] font-medium">ปิดการ์ดสรุป</span>
+                            </button>
+                        </div>
+
+                        <!-- ป้ายตรวจจับเฟอร์นิเจอร์เดิมจาก AI Vision (Anti-Duplicate Detection) -->
+                        <div id="existing-furniture-alert" class="hidden mb-3 p-3 bg-amber-50 border border-amber-200/90 rounded-2xl flex items-center gap-3 text-amber-900 text-xs shadow-xs">
+                            <div class="w-8 h-8 rounded-xl bg-amber-200 text-amber-800 flex items-center justify-center flex-shrink-0 text-sm">
+                                <i class="fa-solid fa-eye"></i>
+                            </div>
+                            <div>
+                                <span class="font-bold block text-slate-800 text-xs" id="existing-furniture-title">AI Vision ตรวจพบเฟอร์นิเจอร์เดิมในห้อง</span>
+                                <span class="text-amber-800 text-[11px] block mt-0.5" id="existing-furniture-desc">ระบบคัดเลือกเฉพาะสินค้าเสริมเพื่อป้องกันการซื้อซ้ำซ้อน</span>
+                            </div>
+                        </div>
+
+                        <h2 class="text-2xl font-bold text-slate-800 mb-2">คำแนะนำการตกแต่ง & จุดจัดวาง</h2>
+                        
+                        <div class="bg-blue-50/50 border border-blue-100 rounded-2xl p-4 md:p-5 mt-2">
+                            <div id="ai-recommendation-text" class="text-slate-700 text-sm md:text-base leading-relaxed whitespace-pre-line">
+                                กำลังโหลดคำแนะนำ...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- แถวล่าง: วางเคียงข้างกัน 50/50 (ซ้าย: แนวคิดการจัดผังแบบ Open Flow / ขวา: แผนผังจุดจัดวางเฟอร์นิเจอร์บนภาพห้อง) -->
+            <div id="ai-concept-spatial-row" class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start mt-8 pt-6 border-t border-slate-100">
+                
+                <!-- คอลัมน์ซ้าย: การ์ดแนวคิดการออกแบบและวิเคราะห์มิติห้องจาก AI Vision -->
+                <div id="design-concept-box" class="hidden bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-slate-50/80 border border-blue-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between h-full">
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs shadow-xs">
+                                <i class="fa-solid fa-compass-drafting"></i>
+                            </span>
+                            <h3 id="concept-headline" class="text-xs sm:text-sm font-bold text-slate-800">
+                                แนวคิดการจัดผังห้องเชิงพื้นที่
+                            </h3>
+                        </div>
+                        <p id="concept-story" class="text-xs text-slate-600 leading-relaxed mb-4">
+                            การจัดสรรพื้นที่เน้นความโปร่งโล่งและเชื่อมต่อกับแสงธรรมชาติ
+                        </p>
+                    </div>
+                    <div id="concept-insights-list" class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2.5 border-t border-slate-200/60 text-[11px]">
+                        <!-- Insight pills generated by JS -->
+                    </div>
+                </div>
+
+                <!-- คอลัมน์ขวา: ส่วนแสดงรายการหมุดและคำแนะนำจุดจัดวาง (Placement Guide List) -->
+                <div id="spatial-guide-section" class="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between h-full">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-map-location-dot text-blue-600"></i>
+                                <span>แผนผังจุดจัดวางเฟอร์นิเจอร์บนภาพห้อง:</span>
+                            </h3>
+                            <span class="text-[11px] text-slate-400 font-medium">คลิกหมุดเพื่อไฮไลต์</span>
+                        </div>
+                        <div id="placement-items-list" class="flex flex-col gap-2.5">
+                            <!-- รายการหมุดแต่ละชิ้นจะถูกสร้างที่นี่ -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900 mb-2">ร้านค้าเฟอร์นิเจอร์ & ของตกแต่ง</h1>
+                <p class="text-slate-500 text-sm md:text-base">ค้นหาและเลือกซื้อเฟอร์นิเจอร์ที่แมตช์กับการออกแบบห้องของคุณ</p>
+            </div>
+
+            <!-- ช่องค้นหาสินค้า (Search Bar) -->
+            <div class="relative w-full md:w-80">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="search-input" placeholder="ค้นหาชื่อสินค้า หรือรายละเอียด..." class="w-full bg-white border border-slate-200 rounded-full pl-11 pr-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 shadow-sm transition">
+            </div>
+        </div>
+
+        <!-- แท็บหมวดหมู่ (Category Filter) -->
+        <div class="flex items-center gap-2.5 overflow-x-auto pb-4 mb-8 text-sm no-scrollbar">
+            <button type="button" data-filter="all" class="filter-btn px-5 py-2.5 bg-blue-600 text-white rounded-full font-bold whitespace-nowrap shadow-md shadow-blue-500/20 border-none cursor-pointer transition flex items-center gap-2">
+                <i class="fa-solid fa-sparkles text-xs"></i>
+                <span>ทั้งหมด</span>
+            </button>
+            <button type="button" data-filter="โซฟา" class="filter-btn px-5 py-2.5 bg-white text-slate-700 border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 rounded-full font-medium whitespace-nowrap transition cursor-pointer flex items-center gap-2">
+                <i class="fa-solid fa-couch text-blue-500 text-xs"></i>
+                <span>โซฟา</span>
+            </button>
+            <button type="button" data-filter="เตียง" class="filter-btn px-5 py-2.5 bg-white text-slate-700 border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 rounded-full font-medium whitespace-nowrap transition cursor-pointer flex items-center gap-2">
+                <i class="fa-solid fa-bed text-blue-500 text-xs"></i>
+                <span>เตียง</span>
+            </button>
+            <button type="button" data-filter="โต๊ะ" class="filter-btn px-5 py-2.5 bg-white text-slate-700 border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 rounded-full font-medium whitespace-nowrap transition cursor-pointer flex items-center gap-2">
+                <i class="fa-solid fa-table text-amber-500 text-xs"></i>
+                <span>โต๊ะ</span>
+            </button>
+            <button type="button" data-filter="เก้าอี้" class="filter-btn px-5 py-2.5 bg-white text-slate-700 border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 rounded-full font-medium whitespace-nowrap transition cursor-pointer flex items-center gap-2">
+                <i class="fa-solid fa-chair text-emerald-500 text-xs"></i>
+                <span>เก้าอี้</span>
+            </button>
+            <button type="button" data-filter="ตู้" class="filter-btn px-5 py-2.5 bg-white text-slate-700 border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 rounded-full font-medium whitespace-nowrap transition cursor-pointer flex items-center gap-2">
+                <i class="fa-solid fa-box-archive text-purple-500 text-xs"></i>
+                <span>ตู้</span>
+            </button>
+            <button type="button" data-filter="ของตกแต่ง" class="filter-btn px-5 py-2.5 bg-white text-slate-700 border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 rounded-full font-medium whitespace-nowrap transition cursor-pointer flex items-center gap-2">
+                <i class="fa-solid fa-plant-wilt text-teal-500 text-xs"></i>
+                <span>ของตกแต่ง</span>
+            </button>
+            <button type="button" data-filter="อื่นๆ" class="filter-btn px-5 py-2.5 bg-white text-slate-700 border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 rounded-full font-medium whitespace-nowrap transition cursor-pointer flex items-center gap-2">
+                <i class="fa-solid fa-ellipsis text-slate-400 text-xs"></i>
+                <span>อื่นๆ</span>
+            </button>
+        </div>
+
+        <!-- ส่วนแสดงผลลัพธ์จาก AI -->
+        <div id="ai-results-section" class="mb-12">
+            <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-wand-magic-sparkles text-blue-500"></i> สินค้าที่ AI แนะนำสำหรับคุณ
+            </h2>
+            <div id="matched-products-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <p class="text-slate-500 text-sm col-span-full">ยังไม่มีผลลัพธ์การออกแบบจาก AI (ไปที่เมนู "ออกแบบห้อง" เพื่อเริ่มต้น)</p>
+            </div>
+        </div>
+
+        <!-- ส่วนสินค้าทั้งหมด (ดึงข้อมูลจริงจาก Database ผ่าน app.js) -->
+        <div>
+            <h2 class="text-xl font-bold text-slate-800 mb-4">สินค้าทั้งหมด</h2>
+            <div id="all-products-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div class="col-span-full text-center text-slate-500 py-8">กำลังโหลดรายการสินค้าทั้งหมด...</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 hidden [&.active]:flex flex-col items-center justify-center">
+        <div class="relative w-20 h-20 mb-4">
+            <div class="absolute inset-0 rounded-full border-4 border-slate-100"></div>
+            <div class="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+        </div>
+        <h3 class="text-lg font-bold text-slate-800">กำลังโหลด...</h3>
+    </div>
+
+    <!-- Script แสดงข้อมูลจาก AI และควบคุมการกรองสินค้า -->
+    <script>
+        // ฟังก์ชันไฮไลต์การ์ดสินค้าเมื่อคลิกหมุด
+        window.highlightProduct = function(productId) {
+            const cards = document.querySelectorAll('#matched-products-container .product-card');
+            cards.forEach(card => card.classList.remove('card-highlight'));
+
+            let targetCard = null;
+            cards.forEach(card => {
+                if (card.getAttribute('data-product-id') == String(productId)) {
+                    targetCard = card;
+                }
+                const buyBtn = card.querySelector(`[data-buy-product-id="${productId}"]`);
+                if (buyBtn && !targetCard) targetCard = card;
+            });
+
+            if (targetCard) {
+                targetCard.classList.add('card-highlight');
+                targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => targetCard.classList.remove('card-highlight'), 3000);
+            }
+        };
+
+        window.highlightPin = function(productId) {
+            const pin = document.querySelector(`.pin-marker[data-pin-id="${productId}"]`);
+            if (pin) {
+                pin.classList.add('scale-125', 'z-40');
+                const tooltip = pin.querySelector('.pin-tooltip');
+                if (tooltip) {
+                    tooltip.style.opacity = '1';
+                    tooltip.style.pointerEvents = 'auto';
+                }
+            }
+        };
+
+        window.resetPinHighlight = function() {
+            const pins = document.querySelectorAll('.pin-marker');
+            pins.forEach(pin => {
+                pin.classList.remove('scale-125', 'z-40');
+                const tooltip = pin.querySelector('.pin-tooltip');
+                if (tooltip) {
+                    tooltip.style.opacity = '';
+                    tooltip.style.pointerEvents = '';
+                }
+            });
+        };
+
+        function generateClientSidePlacements(products, roomType) {
+            const isBedroom = (roomType || '').includes('นอน');
+            const isWorking = (roomType || '').includes('ทำงาน');
+            
+            const livingPresets = [
+                { cat: 'โซฟา', zone_name: 'โซนนั่งเล่นหลัก (Main Living Anchor)', title: 'ผนังทึบฝั่งซ้าย-กลางห้อง', x: 36, y: 74, tip: 'วางโซฟาชิดผนังทึบเพื่อเป็นจุดยึดสายตาหลัก เปิดมุมมองรับแสงธรรมชาติจากหน้าต่าง และเปิดทางสัญจรให้โปร่ง', footprint_w: 28, footprint_h: 12, icon: 'fa-couch', color: '#2563eb' },
+                { cat: 'โต๊ะ', zone_name: 'โซนโต๊ะกลางฟังก์ชัน (Center Core)', title: 'กึ่งกลางด้านหน้าโซฟา', x: 54, y: 83, tip: 'วางโต๊ะกลางเว้นระยะจากโซฟา 45 ซม. เป็นระยะสรีรศาสตร์ที่เดินผ่านได้คล่องตัวและเอื้อมหยิบของได้สะดวก', footprint_w: 20, footprint_h: 9, icon: 'fa-table', color: '#f59e0b' },
+                { cat: 'เก้าอี้', zone_name: 'มุมพักผ่อนรับแสงธรรมชาติ (Sunlit Nook)', title: 'ริมหน้าต่างฝั่งขวา', x: 78, y: 72, tip: 'จัดวางเก้าอี้ริมหน้าต่างฝั่งขวาเพื่อรับแสงธรรมชาติ เหมาะสำหรับนั่งอ่านหนังสือหรือผ่อนคลาย ทำมุม 45 องศากับโซฟา', footprint_w: 16, footprint_h: 8, icon: 'fa-chair', color: '#10b981' },
+                { cat: 'ตู้', zone_name: 'โซนจัดเก็บและวางมีเดีย (Media Wall)', title: 'ผนังด้านซ้ายสุด', x: 18, y: 70, tip: 'วางชิดผนังด้านซ้ายเพื่อความเป็นระเบียบ ไม่บดบังทางสัญจร และอยู่ในระดับสายตาที่มองเห็นสะดวกจากโซฟา', footprint_w: 22, footprint_h: 9, icon: 'fa-box-archive', color: '#8b5cf6' },
+                { cat: 'ของตกแต่ง', zone_name: 'มุมสร้างบรรยากาศธรรมชาติ (Green Corner)', title: 'มุมห้องริมหน้าต่าง', x: 86, y: 75, tip: 'วางต้นไม้ฟอกอากาศหรือของตกแต่งใกล้หน้าต่างเพื่อรับแสงแดด เพิ่มความมีชีวิตชีวาให้กับห้อง', footprint_w: 14, footprint_h: 7, icon: 'fa-plant-wilt', color: '#06b6d4' }
+            ];
+            const bedroomPresets = [
+                { cat: 'เตียง', zone_name: 'โซนเตียงนอนหลัก (Master Sleep)', title: 'กึ่งกลางผนังห้อง', x: 50, y: 71, tip: 'วางหัวเตียงชิดผนังหลักตรงกลางห้อง เว้นทางเดินรอบเตียงทั้งสองฝั่งเพื่อการสัญจรที่สะดวกสบาย', footprint_w: 32, footprint_h: 14, icon: 'fa-bed', color: '#2563eb' },
+                { cat: 'ตู้', zone_name: 'โซนตู้ข้างเตียง/ตู้เสื้อผ้า', title: 'ชิดผนังด้านข้างเตียง', x: 80, y: 70, tip: 'วางตู้ข้างเตียงในตำแหน่งที่เอื้อมหยิบโคมไฟหรือของใช้ส่วนตัวได้สะดวกขณะนอน', footprint_w: 18, footprint_h: 8, icon: 'fa-box-archive', color: '#8b5cf6' },
+                { cat: 'โต๊ะ', zone_name: 'มุมโต๊ะทำงาน/แต่งตัว', title: 'ริมหน้าต่างหรือมุมห้อง', x: 22, y: 74, tip: 'วางโต๊ะใกล้ช่องแสงธรรมชาติเพื่อให้ได้รับแสงธรรมชาติขณะทำงานหรือแต่งตัว', footprint_w: 20, footprint_h: 9, icon: 'fa-table', color: '#f59e0b' },
+                { cat: 'ของตกแต่ง', zone_name: 'มุมตกแต่งผ่อนคลาย', title: 'บนโต๊ะข้างเตียง / มุมห้อง', x: 76, y: 72, tip: 'จัดวางโคมไฟหรือของตกแต่งเพื่อสร้างบรรยากาศอบอุ่น ผ่อนคลายก่อนนอน', footprint_w: 14, footprint_h: 7, icon: 'fa-plant-wilt', color: '#06b6d4' }
+            ];
+            const workingPresets = [
+                { cat: 'โต๊ะ', zone_name: 'โซนโต๊ะทำงานหลัก (Focus Work)', title: 'ริมหน้าต่าง / กลางห้องทำงาน', x: 50, y: 78, tip: 'จัดวางโต๊ะทำงานในจุดที่รับแสงธรรมชาติได้ดี ไม่อยู่ในแนวแสงสะท้อนหน้าจอคอมพิวเตอร์', footprint_w: 26, footprint_h: 11, icon: 'fa-table', color: '#f59e0b' },
+                { cat: 'เก้าอี้', zone_name: 'เก้าอี้ทำงานสรีรศาสตร์ (Ergonomic)', title: 'ด้านหลังโต๊ะทำงาน', x: 50, y: 70, tip: 'จัดวางคู่กับโต๊ะทำงาน เว้นระยะถอยเก้าอี้และหมุนตัวได้อย่างสะดวกสบาย', footprint_w: 16, footprint_h: 8, icon: 'fa-chair', color: '#2563eb' },
+                { cat: 'ตู้', zone_name: 'โซนเอกสารและหนังสือ (Reference Wall)', title: 'ชิดผนังด้านข้าง', x: 80, y: 70, tip: 'วางตู้เก็บเอกสารหรือชั้นหนังสือชิดผนังด้านข้างเพื่อความเรียบร้อยและหยิบใช้งานง่าย', footprint_w: 20, footprint_h: 9, icon: 'fa-box-archive', color: '#8b5cf6' }
+            ];
+
+            const presets = isBedroom ? bedroomPresets : (isWorking ? workingPresets : livingPresets);
+            const fallbackCoords = [[36, 74], [54, 83], [78, 72], [18, 70], [86, 75]];
+            const usedCats = new Set();
+
+            return products.map((p, idx) => {
+                const cat = p.category || '';
+                const preset = presets.find(pr => cat.includes(pr.cat) && !usedCats.has(pr.cat));
+                let x, y, title, tip, zone, fw, fh, icon, col;
+                if (preset) {
+                    usedCats.add(preset.cat);
+                    x = preset.x; y = preset.y; title = preset.title; tip = preset.tip;
+                    zone = preset.zone_name; fw = preset.footprint_w; fh = preset.footprint_h;
+                    icon = preset.icon; col = preset.color;
+                } else {
+                    const coord = fallbackCoords[Math.min(idx, fallbackCoords.length - 1)];
+                    x = coord[0]; y = coord[1];
+                    title = `จุดจัดวางที่ ${idx + 1}`;
+                    tip = `จัดวาง ${p.name || 'เฟอร์นิเจอร์'} ให้สมดุลกับพื้นที่และทางสัญจรในห้อง`;
+                    zone = `โซนจัดวางที่ ${idx + 1}`;
+                    fw = 20; fh = 9; icon = 'fa-couch'; col = '#2563eb';
+                }
+                return {
+                    product_id: p.id,
+                    product_name: p.name,
+                    category: cat,
+                    pin_number: idx + 1,
+                    x: x,
+                    y: y,
+                    zone_name: zone,
+                    position_title: title,
+                    placement_tip: tip,
+                    footprint_w: fw,
+                    footprint_h: fh,
+                    icon: icon,
+                    color: col
+                };
+            });
+        }
+
+        function renderSpatialPlacements(placements, products, roomType) {
+            const pinsContainer = document.getElementById('room-pins-container');
+            const footprintsContainer = document.getElementById('room-footprints-container');
+            const guideList = document.getElementById('placement-items-list');
+            const badge = document.getElementById('pins-count-badge');
+            if (!pinsContainer) return;
+
+            pinsContainer.innerHTML = '';
+            if (footprintsContainer) footprintsContainer.innerHTML = '';
+            if (guideList) guideList.innerHTML = '';
+
+            let validPlacements = Array.isArray(placements) && placements.length > 0 ? placements : [];
+            if (validPlacements.length === 0 && Array.isArray(products) && products.length > 0) {
+                validPlacements = generateClientSidePlacements(products, roomType);
+            }
+
+            if (badge) badge.textContent = `${validPlacements.length} จุดจัดวาง`;
+            if (validPlacements.length === 0) {
+                const guideSection = document.getElementById('spatial-guide-section');
+                if (guideSection) guideSection.style.display = 'none';
+                const conceptBox = document.getElementById('design-concept-box');
+                if (conceptBox) conceptBox.classList.add('lg:col-span-2');
+                return;
+            }
+
+            validPlacements.forEach((item, index) => {
+                const pinNum = item.pin_number || (index + 1);
+                const posX = Math.max(8, Math.min(92, item.x || (30 + index * 22)));
+                const posY = Math.max(20, Math.min(92, item.y || (70 + (index % 2) * 10)));
+                const prod = (products || []).find(p => p.id === item.product_id) || {};
+                const prodImg = prod.image_url || prod.image_base64 || 'https://via.placeholder.com/80';
+                const prodPrice = prod.price ? Number(prod.price).toLocaleString('th-TH') + ' ฿' : '';
+                const fw = item.footprint_w || 22;
+                const fh = item.footprint_h || 10;
+                const iconName = item.icon || 'fa-couch';
+                const zoneColor = item.color || '#2563eb';
+
+                // 1. สร้าง Footprint โซนพื้นที่จัดวางบนพื้นจำลอง (AR Floor Projection)
+                if (footprintsContainer) {
+                    const footprintEl = document.createElement('div');
+                    footprintEl.className = 'floor-footprint-box absolute -translate-x-1/2 -translate-y-1/2 rounded-2xl border-2 border-dashed transition-all duration-300 pointer-events-none flex items-center justify-center';
+                    footprintEl.style.left = `${posX}%`;
+                    footprintEl.style.top = `${posY}%`;
+                    footprintEl.style.width = `${fw}%`;
+                    footprintEl.style.height = `${fh}%`;
+                    footprintEl.style.borderColor = zoneColor;
+                    footprintEl.style.backgroundColor = `${zoneColor}18`;
+                    footprintEl.dataset.targetPin = item.product_id;
+
+                    footprintEl.innerHTML = `
+                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm shadow-sm" style="background-color: ${zoneColor}25; color: ${zoneColor};">
+                            ${item.zone_name ? item.zone_name.split(' ')[0] : 'พื้นที่จัดวาง'}
+                        </span>
+                    `;
+                    footprintsContainer.appendChild(footprintEl);
+                }
+
+                // 2. สร้างหมุด AI Interactive Pin บนรูปภาพห้อง
+                const pinEl = document.createElement('div');
+                pinEl.className = 'pin-marker group/pin absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-20 transition-all duration-300';
+                pinEl.style.left = `${posX}%`;
+                pinEl.style.top = `${posY}%`;
+                pinEl.dataset.pinId = item.product_id;
+                pinEl.dataset.pinIndex = pinNum;
+
+                pinEl.innerHTML = `
+                    <div class="relative flex items-center justify-center">
+                        <!-- แสงกระจายแบบ Pulse -->
+                        <span class="absolute -inset-3 rounded-full opacity-60 pin-pulse" style="background-color: ${zoneColor};"></span>
+                        
+                        <!-- ตัวหมุดหลักพร้อมไอคอนและหมายเลข -->
+                        <div class="relative flex items-center gap-1.5 pl-2 pr-3 py-1.5 rounded-full text-white font-bold text-xs shadow-xl border-2 border-white ring-2 ring-blue-500/30 transform transition-all group-hover/pin:scale-110" style="background: linear-gradient(135deg, ${zoneColor}, #1e3a8a);">
+                            <span class="w-5 h-5 rounded-full bg-white text-blue-700 font-extrabold text-[11px] flex items-center justify-center shadow-inner">
+                                ${pinNum}
+                            </span>
+                            <i class="fa-solid ${iconName} text-xs"></i>
+                            <span class="text-[11px] font-medium max-w-[90px] truncate hidden sm:inline">
+                                ${item.product_name || prod.name || 'เฟอร์นิเจอร์'}
+                            </span>
+                        </div>
+
+                        <!-- Popover Tooltip แสดงเมื่อ Hover หรือคลิกหมุด -->
+                        <div class="pin-tooltip absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-64 sm:w-72 bg-slate-900/95 text-white p-4 rounded-2xl shadow-2xl backdrop-blur-md opacity-0 pointer-events-none group-hover/pin:opacity-100 group-hover/pin:pointer-events-auto transition-all duration-200 z-50 border border-white/15">
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold text-white uppercase tracking-wider" style="background-color: ${zoneColor};">
+                                    <i class="fa-solid ${iconName} mr-1"></i>หมุดที่ ${pinNum}
+                                </span>
+                                <span class="text-[11px] font-bold text-blue-300 truncate">${item.zone_name || item.position_title || 'จุดจัดวาง'}</span>
+                            </div>
+
+                            <div class="flex gap-3 items-center mb-2.5">
+                                <img src="${prodImg}" class="w-14 h-14 rounded-xl object-cover bg-slate-800 flex-shrink-0 border border-white/10" alt="">
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-xs font-bold text-white truncate leading-tight">${item.product_name || prod.name || 'เฟอร์นิเจอร์'}</p>
+                                    <p class="text-[11px] text-slate-400 mt-0.5">${item.position_title || ''}</p>
+                                    ${prodPrice ? `<p class="text-xs font-bold text-emerald-400 mt-1">${prodPrice}</p>` : ''}
+                                </div>
+                            </div>
+
+                            <div class="border-t border-white/10 pt-2 text-[11px] text-slate-300 leading-relaxed">
+                                <p class="text-amber-300 font-semibold mb-0.5"><i class="fa-solid fa-lightbulb mr-1"></i>เหตุผลเชิงการออกแบบ:</p>
+                                <p>${item.placement_tip || 'จัดวางให้เหมาะสมกับพื้นที่และการสัญจรของห้อง'}</p>
+                            </div>
+                            
+                            <div class="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between text-[10px] text-blue-300">
+                                <span><i class="fa-solid fa-arrow-down mr-1"></i>คลิกเพื่อดูการ์ดสินค้า</span>
+                                <i class="fa-solid fa-chevron-right text-[8px]"></i>
+                            </div>
+
+                            <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900/95"></div>
+                        </div>
+                    </div>
+                `;
+
+                pinEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    window.highlightProduct(item.product_id);
+                });
+
+                pinsContainer.appendChild(pinEl);
+
+                // 3. สร้างรายการใน Placement Guide List ด้านขวา
+                if (guideList) {
+                    const guideCard = document.createElement('div');
+                    guideCard.className = 'placement-item-card flex items-start gap-3 p-3 bg-white rounded-xl border border-slate-200/80 hover:border-blue-400 hover:shadow-md transition cursor-pointer';
+                    guideCard.dataset.targetPin = item.product_id;
+
+                    guideCard.innerHTML = `
+                        <div class="w-7 h-7 rounded-full text-white font-extrabold text-xs flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm" style="background-color: ${zoneColor};">
+                            ${pinNum}
+                        </div>
+                        <div class="flex-grow min-w-0">
+                            <div class="flex items-center justify-between gap-2 mb-0.5">
+                                <span class="text-xs font-bold text-slate-800 truncate">${item.product_name || prod.name || 'เฟอร์นิเจอร์'}</span>
+                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0" style="background-color: ${zoneColor}20; color: ${zoneColor};">
+                                    <i class="fa-solid ${iconName} mr-1"></i>${item.position_title || 'ตำแหน่ง'}
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 leading-relaxed line-clamp-2">${item.placement_tip || 'จัดวางในตำแหน่งที่เสริมการใช้งาน'}</p>
+                        </div>
+                    `;
+
+                    guideCard.addEventListener('mouseenter', () => window.highlightPin(item.product_id));
+                    guideCard.addEventListener('mouseleave', () => window.resetPinHighlight());
+                    guideCard.addEventListener('click', () => {
+                        window.highlightPin(item.product_id);
+                        window.highlightProduct(item.product_id);
+                    });
+
+                    guideList.appendChild(guideCard);
+                }
+            });
+
+            // ควบคุมปุ่ม Switcher สำหรับเปลี่ยนมุมมองการออกแบบ (จุดมาร์ก / ผังโซน / ห้องเปล่า)
+            const btnHotspots = document.getElementById('view-mode-hotspots');
+            const btnFootprints = document.getElementById('view-mode-footprints');
+            const btnClean = document.getElementById('view-mode-clean');
+
+            function setViewMode(mode) {
+                [btnHotspots, btnFootprints, btnClean].forEach(btn => {
+                    if (btn) {
+                        btn.classList.remove('bg-blue-600', 'text-white', 'shadow-sm');
+                        btn.classList.add('bg-transparent', 'text-slate-300');
+                    }
+                });
+
+                if (mode === 'hotspots') {
+                    if (btnHotspots) {
+                        btnHotspots.classList.add('bg-blue-600', 'text-white', 'shadow-sm');
+                        btnHotspots.classList.remove('bg-transparent', 'text-slate-300');
+                    }
+                    if (pinsContainer) { pinsContainer.style.opacity = '1'; pinsContainer.style.pointerEvents = 'auto'; }
+                    if (footprintsContainer) { footprintsContainer.style.opacity = '0.5'; }
+                } else if (mode === 'footprints') {
+                    if (btnFootprints) {
+                        btnFootprints.classList.add('bg-blue-600', 'text-white', 'shadow-sm');
+                        btnFootprints.classList.remove('bg-transparent', 'text-slate-300');
+                    }
+                    if (pinsContainer) { pinsContainer.style.opacity = '1'; pinsContainer.style.pointerEvents = 'auto'; }
+                    if (footprintsContainer) { footprintsContainer.style.opacity = '1'; }
+                } else if (mode === 'clean') {
+                    if (btnClean) {
+                        btnClean.classList.add('bg-blue-600', 'text-white', 'shadow-sm');
+                        btnClean.classList.remove('bg-transparent', 'text-slate-300');
+                    }
+                    if (pinsContainer) { pinsContainer.style.opacity = '0'; pinsContainer.style.pointerEvents = 'none'; }
+                    if (footprintsContainer) { footprintsContainer.style.opacity = '0'; }
+                }
+            }
+
+            if (btnHotspots) btnHotspots.onclick = () => setViewMode('hotspots');
+            if (btnFootprints) btnFootprints.onclick = () => setViewMode('footprints');
+            if (btnClean) btnClean.onclick = () => setViewMode('clean');
+            setViewMode('hotspots');
+        }
+
+        // ฟังก์ชันอัปเดตการแสดงผลการออกแบบห้องและสินค้า AI
+        function applyDesignData(designData) {
+            if (!designData || (!designData.image && !designData.aiRecommendation)) return;
+
+            const aiSummaryCard = document.getElementById('ai-summary-card');
+            const resultImg = document.getElementById('result-image');
+            const resultStyle = document.getElementById('result-style');
+            const resultBudget = document.getElementById('result-budget');
+            const aiRecoText = document.getElementById('ai-recommendation-text');
+
+            if (aiSummaryCard) aiSummaryCard.classList.remove('hidden');
+            if (resultImg && designData.image) resultImg.src = designData.image;
+            if (resultStyle && designData.style) resultStyle.textContent = designData.style;
+            
+            if (resultBudget) {
+                const budgetNum = Number(String(designData.budget ?? '').replace(/[^\d.]/g, ''));
+                resultBudget.textContent = budgetNum > 0
+                    ? budgetNum.toLocaleString('th-TH') + ' บาท'
+                    : 'ไม่ระบุงบ';
+            }
+
+            if (aiRecoText && designData.aiRecommendation) {
+                aiRecoText.textContent = designData.aiRecommendation;
+            }
+
+            // แสดงการ์ดแนวคิดการออกแบบเชิงพื้นที่ (Design Concept)
+            const conceptBox = document.getElementById('design-concept-box');
+            const conceptHead = document.getElementById('concept-headline');
+            const conceptStory = document.getElementById('concept-story');
+            const insightsList = document.getElementById('concept-insights-list');
+
+            if (conceptBox && designData.designConcept) {
+                conceptBox.classList.remove('hidden');
+                if (conceptHead && designData.designConcept.headline) {
+                    conceptHead.textContent = designData.designConcept.headline;
+                }
+                if (conceptStory && designData.designConcept.story) {
+                    conceptStory.textContent = designData.designConcept.story;
+                }
+                if (insightsList && Array.isArray(designData.designConcept.visual_insights)) {
+                    insightsList.innerHTML = designData.designConcept.visual_insights.map(ins => `
+                        <div class="bg-white/80 rounded-xl p-2.5 border border-slate-200/60 shadow-xs">
+                            <span class="font-bold text-slate-800 flex items-center gap-1.5 mb-1 text-[11px]">
+                                <i class="fa-solid ${ins.icon || 'fa-info'} text-blue-600"></i> ${ins.label}
+                            </span>
+                            <p class="text-[10px] text-slate-500 leading-snug">${ins.desc}</p>
+                        </div>
+                    `).join('');
+                }
+            } else if (conceptBox) {
+                conceptBox.classList.add('hidden');
+                const guideSection = document.getElementById('spatial-guide-section');
+                if (guideSection) guideSection.classList.add('lg:col-span-2');
+            }
+
+            // แสดงป้ายการตรวจจับเฟอร์นิเจอร์เดิมจาก AI Vision (Anti-Duplicate System)
+            const existAlert = document.getElementById('existing-furniture-alert');
+            const existTitle = document.getElementById('existing-furniture-title');
+            const existDesc = document.getElementById('existing-furniture-desc');
+            const vInfo = designData.visualInfo;
+
+            if (existAlert && vInfo) {
+                existAlert.classList.remove('hidden');
+                if (vInfo.has_existing_furniture && Array.isArray(vInfo.existing_furniture) && vInfo.existing_furniture.length > 0) {
+                    existTitle.textContent = `AI Vision ตรวจพบในภาพ: มี "${vInfo.existing_furniture.join(', ')}" อยู่แล้ว`;
+                    existDesc.textContent = `ระบบได้ตัดหมวดหมู่ ${vInfo.existing_furniture.join(', ')} ออก เพื่อไม่ให้มีสินค้าซ้ำซ้อน และคัดเลือกเฉพาะเฟอร์นิเจอร์เสริมที่จัดวางร่วมกันได้ลงตัว`;
+                } else {
+                    existAlert.className = 'mb-3 p-3 bg-emerald-50 border border-emerald-200/90 rounded-2xl flex items-center gap-3 text-emerald-900 text-xs shadow-xs';
+                    const iconBox = existAlert.querySelector('.w-8');
+                    if (iconBox) iconBox.className = 'w-8 h-8 rounded-xl bg-emerald-200 text-emerald-800 flex items-center justify-center flex-shrink-0 text-sm';
+                    const iconEl = existAlert.querySelector('i');
+                    if (iconEl) iconEl.className = 'fa-solid fa-check-double';
+                    existTitle.textContent = 'AI Vision ตรวจสอบภาพ: เป็นห้องเปล่าพร้อมจัดสรรพื้นที่';
+                    existDesc.textContent = 'ไม่พบเฟอร์นิเจอร์ชิ้นหลักเดิม ระบบจึงสามารถแนะนำและจัดวางเฟอร์นิเจอร์หลักของห้องได้อย่างเต็มที่';
+                }
+            }
+
+            // แสดงหมุดตำแหน่ง AI และผังโซนบนภาพห้อง
+            renderSpatialPlacements(designData.placements, designData.matchedProducts, designData.roomType);
+
+            // แสดงสินค้าแนะนำของ AI
+            if (typeof window.renderProductCards === 'function' && Array.isArray(designData.matchedProducts) && designData.matchedProducts.length > 0) {
+                window.renderProductCards(designData.matchedProducts, designData.placements);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const closeSummaryBtn = document.getElementById('btn-close-ai-summary');
+            if (closeSummaryBtn) {
+                closeSummaryBtn.onclick = () => {
+                    try {
+                        sessionStorage.removeItem('room_design_data');
+                    } catch (_) {}
+                    const aiSummaryCard = document.getElementById('ai-summary-card');
+                    if (aiSummaryCard) aiSummaryCard.classList.add('hidden');
+                    const guideSection = document.getElementById('spatial-guide-section');
+                    if (guideSection) guideSection.style.display = 'none';
+                };
+            }
+
+            // 1. ดึงและแสดงข้อมูลสรุป AI จาก sessionStorage
+            let designData = null;
+            try {
+                const stored = sessionStorage.getItem('room_design_data');
+                if (stored) {
+                    designData = JSON.parse(stored);
+                }
+            } catch (_) {
+                designData = null;
+            }
+
+            if (designData && (designData.image || designData.aiRecommendation)) {
+                applyDesignData(designData);
+            }
+
+            // 2. ถ้าในเครื่องยังไม่มีข้อมูล หรือขาดคำแนะนำ AI (เช่น สแกนจากคอมแล้วเปิดดูบนมือถือ) ให้ดึงจาก Cloud Sync (Database)
+            if (!designData || !designData.aiRecommendation) {
+                try {
+                    const sessionUser = (typeof Session !== 'undefined') ? Session.load() : null;
+                    const uid = sessionUser ? (sessionUser.id || sessionUser.user_id) : null;
+                    const headers = {};
+                    if (uid) headers['x-user-id'] = String(uid);
+
+                    const res = await fetch('/api/latest-room-design', { headers });
+                    if (res.ok) {
+                        const cloudData = await res.json();
+                        if (cloudData && (cloudData.image || cloudData.aiRecommendation)) {
+                            designData = cloudData;
+                            try {
+                                sessionStorage.setItem('room_design_data', JSON.stringify(cloudData));
+                            } catch (_) {}
+                            applyDesignData(cloudData);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Cloud Sync fetch error:', e);
+                }
+            }
+
+            // 2. ฟังก์ชัน Filter สินค้าและ Search Bar
+            const filterBtns = document.querySelectorAll('.filter-btn');
+            const searchInput = document.getElementById('search-input');
+            let currentFilter = 'all';
+
+            function filterProducts() {
+                const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+                // ฟังก์ชันย่อยสำหรับกรองสินค้าแต่ละ Section อย่างเป็นอิสระ
+                function filterContainer(containerId) {
+                    const container = document.getElementById(containerId);
+                    if (!container) return;
+                    
+                    const cards = container.querySelectorAll('.product-card');
+                    if (cards.length === 0) return;
+
+                    let hasVisibleCard = false;
+
+                    cards.forEach(card => {
+                        const itemCategory = card.getAttribute('data-category') || '';
+                        const title = card.querySelector('h3')?.textContent.toLowerCase() || '';
+                        const desc = card.querySelector('p')?.textContent.toLowerCase() || '';
+
+                        const matchCategory = (currentFilter === 'all' || itemCategory.includes(currentFilter) || currentFilter.includes(itemCategory));
+                        const matchSearch = title.includes(searchTerm) || desc.includes(searchTerm) || itemCategory.toLowerCase().includes(searchTerm);
+
+                        if (matchCategory && matchSearch) {
+                            card.style.display = ''; // คืนค่าเพื่อให้คลาส Flex ทำงานตามเดิม
+                            hasVisibleCard = true;
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+
+                    let emptyMsg = container.querySelector('.empty-search-msg');
+                    if (!hasVisibleCard) {
+                        if (!emptyMsg) {
+                            emptyMsg = document.createElement('div');
+                            emptyMsg.className = 'empty-search-msg col-span-full text-center text-slate-500 py-12';
+                            emptyMsg.innerHTML = '<i class="fa-solid fa-box-open text-4xl text-slate-300 mb-3 block"></i>ไม่พบสินค้าที่ตรงกับการค้นหา';
+                            container.appendChild(emptyMsg);
+                        }
+                        emptyMsg.style.display = 'block';
+                    } else if (emptyMsg) {
+                        emptyMsg.style.display = 'none';
+                    }
+                }
+
+                // กรองทั้ง 2 คอนเทนเนอร์แยกกัน
+                filterContainer('matched-products-container');
+                filterContainer('all-products-container');
+            }
+
+            filterBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    filterBtns.forEach(b => {
+                        b.classList.remove('bg-blue-600', 'text-white', 'border-none', 'shadow-md', 'shadow-blue-500/20');
+                        b.classList.add('bg-white', 'text-slate-700', 'border', 'border-slate-200');
+                    });
+                    btn.classList.remove('bg-white', 'text-slate-700', 'border', 'border-slate-200');
+                    btn.classList.add('bg-blue-600', 'text-white', 'border-none', 'shadow-md', 'shadow-blue-500/20');
+
+                    currentFilter = btn.getAttribute('data-filter');
+                    setTimeout(filterProducts, 50); 
+                });
+            });
+
+            if (searchInput) {
+                searchInput.addEventListener('input', filterProducts);
+            }
+            
+            // เปิดโอกาสให้ app.js เรียกใช้ filterProducts ได้หลังโหลดสินค้าเสร็จ
+            window.triggerProductFilter = filterProducts;
+        });
+    </script>
+    <script src="app.js?v=21"></script>
+</body>
+</html>
