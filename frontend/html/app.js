@@ -16,6 +16,18 @@ const API_URL = (() => {
     return 'https://roommatch-9ohk.onrender.com';
 })();
 
+// ============================================================
+// Warm-up: Ping backend ตอนโหลดหน้า เพื่อลด Cold Start delay
+// ============================================================
+(function warmUpBackend() {
+    if (API_URL) {
+        fetch(API_URL + '/health', { method: 'GET', signal: AbortSignal.timeout(90000) })
+            .then(r => r.json())
+            .then(d => console.log('[RoomMatch] Backend ready:', d))
+            .catch(e => console.warn('[RoomMatch] Backend warm-up:', e.message));
+    }
+})();
+
 // ==========================================
 // 1. Session Management
 // ==========================================

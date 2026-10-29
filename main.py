@@ -52,6 +52,11 @@ app.add_middleware(
 )
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Health check endpoint (สำหรับ keep-alive / monitoring)
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "clip_available": CLIP_AVAILABLE}
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://myuser:mypassword@localhost:5432/mydatabase")
 
 # Ollama URL สำหรับ AI Recommendation
