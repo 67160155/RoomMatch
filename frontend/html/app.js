@@ -1,11 +1,19 @@
-// ตรวจจับ Host อัตโนมัติ: หากเปิดผ่าน Nginx (พอร์ต 80, 443 หรือ Domain จริง) ให้ใช้ Relative Path ('')
-// เพื่อให้ Request วิ่งผ่าน Nginx Reverse Proxy ได้อย่างถูกต้อง ไม่ว่าเปิดจากเครื่องใดหรือมือถือ
+// ตรวจจับ Host อัตโนมัติ: Production ใช้ Render Backend, Local ใช้ localhost
 const API_URL = (() => {
-    if (window.location.port === '80' || window.location.port === '' || window.location.protocol === 'https:') {
+    const host = window.location.hostname;
+    // กรณี local development
+    if (host === 'localhost' || host === '127.0.0.1') {
+        if (window.location.port === '80' || window.location.port === '') {
+            return '';
+        }
+        return `${window.location.protocol}//${host}:8000`;
+    }
+    // กรณี Cloudflare tunnel (เดิม)
+    if (host.includes('trycloudflare.com')) {
         return '';
     }
-    // กรณีทดสอบรัน frontend ตรงผ่าน Live Server หรือพอร์ตอื่นๆ ที่ไม่ใช่ 80
-    return `${window.location.protocol}//${window.location.hostname}:8000`;
+    // กรณี Production (Vercel/Netlify) → ชี้ไป Render Backend
+    return 'https://roommatch-9ohk.onrender.com';
 })();
 
 // ==========================================
