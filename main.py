@@ -14,18 +14,39 @@ from psycopg2.extras import RealDictCursor
 from passlib.context import CryptContext
 from fastapi.middleware.cors import CORSMiddleware
 
-# AI Libraries
-import torch
-import numpy as np
-from PIL import Image
-from transformers import CLIPProcessor, CLIPModel
+# AI Libraries (โหลดแบบ Optional เพื่อรองรับ hosting ที่ RAM จำกัด)
+CLIP_AVAILABLE = False
+model = None
+processor = None
+DEVICE = "cpu"
+
+try:
+    import torch
+    import numpy as np
+    from PIL import Image
+    from transformers import CLIPProcessor, CLIPModel
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Loading AI Model on device: {DEVICE}...")
+    model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(DEVICE)
+    processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+    CLIP_AVAILABLE = True
+    print(f"CLIP Model loaded successfully on {DEVICE}!")
+except Exception as clip_err:
+    print(f"[Info] CLIP model not loaded: {clip_err}")
+    print("[Info] Main features (AI room design via Ollama) still work.")
+    try:
+        import torch
+        import numpy as np
+        from PIL import Image
+    except Exception:
+        pass
 
 app = FastAPI(title="RoomMatch API")
 
 # อนุญาตให้ Frontend ยิง API ข้ามพอร์ตได้
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -33,15 +54,8 @@ app.add_middleware(
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://myuser:mypassword@localhost:5432/mydatabase")
 
-# เปลี่ยนจาก localhost เป็น host.docker.internal เพื่อให้ Docker ชี้มายัง Ollama ที่เครื่องคอมพิวเตอร์หลัก
+# Ollama URL สำหรับ AI Recommendation
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434/api/generate")
-
-# กำหนดอุปกรณ์ประมวลผล AI: ใช้การ์ดจอ (NVIDIA CUDA GPU) หากมีพร้อมใช้งาน
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Loading AI Model on device: {DEVICE}...")
-model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(DEVICE)
-processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-print(f"Model loaded successfully on {DEVICE}!")
 
 def get_db():
     conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
@@ -603,6 +617,8 @@ async def create_product(
                 raise HTTPException(status_code=400, detail="กรุณาอัปโหลดรูปภาพหรือระบุ URL รูปภาพที่สามารถเข้าถึงได้")
 
             # 2. แปลงรูปภาพและคำนวณ Embedding Vector ด้วย CLIP Model
+            if not CLIP_AVAILABLE:
+                raise HTTPException(status_code=503, detail="CLIP Model ไม่พร้อมใช้งานในโหมด Cloud (RAM จำกัด) กรุณาเพิ่มสินค้าโดยไม่ใช้ Image Embedding")
             pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
             inputs = processor(images=pil_image, return_tensors="pt")
             inputs = {k: v.to(DEVICE) for k, v in inputs.items()}
@@ -784,6 +800,8 @@ async def match_room(
                     pass 
 
         # 2. จัดการรูปภาพและ AI
+        if not CLIP_AVAILABLE:
+            raise HTTPException(status_code=503, detail="ระบบค้นหาสินค้าด้วยรูปภาพ (CLIP) ไม่พร้อมในโหมด Cloud ใช้ฟีเจอร์ 'ออกแบบห้อง' แทนได้ครับ")
         image_bytes = await file.read()
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         inputs = processor(images=image, return_tensors="pt")
@@ -1043,6 +1061,8 @@ def compose_recommendation(overview, products, reasons, room_type, budget, trimm
 
 def detect_existing_furniture(img: Image.Image) -> List[str]:
     """ใช้โมเดล CLIP AI ตรวจจับว่าในภาพห้องมีเฟอร์นิเจอร์หลักชิ้นใดอยู่แล้วบ้าง เพื่อป้องกันการแนะนำซ้ำซ้อน"""
+    if not CLIP_AVAILABLE:
+        return []
     try:
         furniture_checks = {
             'เตียง': ['a bedroom with an existing bed', 'a photo of a bed in a room'],
